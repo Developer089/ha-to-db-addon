@@ -1,0 +1,10 @@
+# local configuration and secrets - never commit
+options*.json
+secrets.yaml
+.env
+*.local.*
+*.sqlite
+__pycache__/
+venv/
+.venv/
+.claude/

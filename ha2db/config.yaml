@@ -1,0 +1,62 @@
+name: HA to DB
+version: "0.3.0"
+slug: ha2db
+description: Periodically writes Home Assistant entity values to InfluxDB or an SQL database
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+homeassistant_api: true
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:database-arrow-up
+panel_title: HA to DB
+map:
+  - share:rw
+options:
+  db_type: influxdb
+  db_host: ""
+  db_port: 8086
+  db_name: ""
+  db_user: ""
+  db_password: ""
+  influx_ssl: true
+  influx_verify_ssl: false
+  influx_measurement: friendly_name
+  influx_measurement_prefix: ""
+  table_name: ha_values
+  interval_seconds: 300
+  align_to_clock: true
+  include_domains: []
+  include_entities: []
+  exclude_entities: []
+  numeric_only: false
+  skip_unavailable: true
+  retention_days: 0
+  log_level: info
+schema:
+  db_type: list(influxdb|mariadb|mysql|postgresql|mssql|sqlite)
+  db_host: str?
+  db_port: port?
+  db_name: str?
+  db_user: str?
+  db_password: password?
+  influx_ssl: bool
+  influx_verify_ssl: bool
+  influx_measurement: list(friendly_name|entity_id)
+  influx_measurement_prefix: str?
+  table_name: match(^[A-Za-z_][A-Za-z0-9_]{0,62}$)
+  interval_seconds: int(10,86400)
+  align_to_clock: bool
+  include_domains:
+    - str
+  include_entities:
+    - str
+  exclude_entities:
+    - str
+  numeric_only: bool
+  skip_unavailable: bool
+  retention_days: int(0,36500)
+  log_level: list(debug|info|warning|error)

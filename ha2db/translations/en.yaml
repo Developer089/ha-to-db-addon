@@ -1,0 +1,55 @@
+configuration:
+  db_type:
+    name: Database type
+  db_host:
+    name: Database server address
+    description: IP address or host name of the database server.
+  db_port:
+    name: Port
+    description: InfluxDB 8086, MariaDB/MySQL 3306, PostgreSQL 5432, MSSQL 1433.
+  db_name:
+    name: Database name
+    description: For SQLite the file path, e.g. /share/ha2db.sqlite.
+  db_user:
+    name: User
+  db_password:
+    name: Password
+    description: A secrets.yaml reference works too, e.g. "!secret influx_password".
+  influx_ssl:
+    name: InfluxDB over HTTPS
+  influx_verify_ssl:
+    name: Verify InfluxDB certificate
+    description: Turn off if the server uses a self-signed certificate.
+  influx_measurement:
+    name: Measurement name
+    description: From the entity's friendly name, or from its entity_id.
+  influx_measurement_prefix:
+    name: Measurement prefix
+    description: Text put before the measurement name, e.g. "HA ".
+  table_name:
+    name: SQL table
+  interval_seconds:
+    name: Write interval (s)
+    description: 300 = every 5 minutes.
+  align_to_clock:
+    name: Align to the clock
+    description: E.g. with 300 s always at :00, :05, :10.
+  include_domains:
+    name: Included domains
+    description: All entities of these domains, e.g. sensor.
+  include_entities:
+    name: Additional entities
+    description: Single entities, wildcards allowed, e.g. switch.pump*.
+  exclude_entities:
+    name: Excluded entities
+    description: Takes precedence over both lists above.
+  numeric_only:
+    name: Numeric values only
+  skip_unavailable:
+    name: Skip unavailable
+    description: Do not write the states unavailable and unknown.
+  retention_days:
+    name: Delete older than (days)
+    description: SQL only, 0 = keep everything.
+  log_level:
+    name: Log level

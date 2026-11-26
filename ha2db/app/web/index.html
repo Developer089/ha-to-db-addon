@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HA to DB</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --text: #1c1e21; --muted: #6b7280;
+    --line: #e3e5e8; --accent: #0b6bcb; --row-hover: #f0f6fd; --badge: #e8eef5;
+    --ok: #1a7f37; --err: #c62828;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111315; --card: #1c1f22; --text: #e6e8ea; --muted: #9aa3ad;
+      --line: #2c3136; --accent: #58a6ff; --row-hover: #20262d; --badge: #2a3138;
+      --ok: #56d364; --err: #ff7b72;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  p.lead { color: var(--muted); margin: 0 0 14px; }
+  .bar { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 8px 0 10px;
+         display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  input[type=search], select, button {
+    font: inherit; color: var(--text); background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  input[type=search] { flex: 1 1 220px; min-width: 0; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+  .status { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); }
+  .list { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px;
+         align-items: center; padding: 9px 12px; border-top: 1px solid var(--line); cursor: pointer; }
+  .row:first-child { border-top: 0; }
+  .row:hover { background: var(--row-hover); }
+  .row input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  .name { font-weight: 500; overflow-wrap: anywhere; }
+  .eid { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .val { text-align: right; font-variant-numeric: tabular-nums; max-width: 38vw;
+         overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { display: inline-block; background: var(--badge); color: var(--muted);
+           border-radius: 6px; padding: 0 6px; font-size: 12px; margin-left: 6px; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+  .more { padding: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hodnoty ukládané do databáze</h1>
+  <p class="lead">Zaškrtněte entity, které se mají pravidelně zapisovat. Změny se ukládají hned.</p>
+
+  <div class="bar">
+    <input type="search" id="q" placeholder="Hledat název nebo entity_id…" autocomplete="off">
+    <select id="domain"><option value="">Všechny typy</option></select>
+    <label class="chk"><input type="checkbox" id="onlySel"> jen vybrané</label>
+    <button id="selAll" title="Zaškrtne všechny právě zobrazené">Vybrat zobrazené</button>
+    <button id="selNone" title="Odškrtne všechny právě zobrazené">Zrušit zobrazené</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="list" id="list"><div class="empty">Načítám…</div></div>
+</main>
+
+<script>
+const PAGE = 300;
+let entities = [];
+let shown = PAGE;
+const $ = id => document.getElementById(id);
+
+function setStatus(text, cls) {
+  const el = $("status");
+  el.textContent = text;
+  el.className = "status" + (cls ? " " + cls : "");
+}
+
+function summary() {
+  const n = entities.filter(e => e.selected || e.by_rule).length;
+  setStatus(`Vybráno ${n} z ${entities.length}`);
+}
+
+function visible() {
+  const q = $("q").value.trim().toLowerCase();
+  const domain = $("domain").value;
+  const onlySel = $("onlySel").checked;
+  return entities.filter(e =>
+    (!domain || e.domain === domain) &&
+    (!onlySel || e.selected || e.by_rule) &&
+    (!q || e.entity_id.toLowerCase().includes(q) || e.name.toLowerCase().includes(q)));
+}
+
+function render() {
+  const list = $("list");
+  const items = visible();
+  list.textContent = "";
+  if (!items.length) {
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.textContent = entities.length ? "Nic neodpovídá filtru." : "Home Assistant nevrátil žádné entity.";
+    list.append(d);
+    return;
+  }
+  for (const e of items.slice(0, shown)) {
+    const row = document.createElement("label");
+    row.className = "row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = e.selected || e.by_rule;
+    cb.disabled = e.by_rule && !e.selected;
+    cb.addEventListener("change", () => save([e.entity_id], cb.checked));
+    const mid = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = e.name;
+    if (e.by_rule) {
+      const b = document.createElement("span");
+      b.className = "badge";
+      b.textContent = "pravidlo v konfiguraci";
+      name.append(b);
+    }
+    const eid = document.createElement("div");
+    eid.className = "eid";
+    eid.textContent = e.entity_id;
+    mid.append(name, eid);
+    const val = document.createElement("div");
+    val.className = "val";
+    val.textContent = e.state + (e.unit ? " " + e.unit : "");
+    row.append(cb, mid, val);
+    list.append(row);
+  }
+  if (items.length > shown) {
+    const more = document.createElement("div");
+    more.className = "more";
+    const btn = document.createElement("button");
+    btn.textContent = `Zobrazit další (${items.length - shown})`;
+    btn.addEventListener("click", () => { shown += PAGE; render(); });
+    more.append(btn);
+    list.append(more);
+  }
+}
+
+async function save(ids, selected) {
+  setStatus("Ukládám…");
+  try {
+    const r = await fetch("api/select", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({entity_ids: ids, selected}),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const set = new Set(ids);
+    for (const e of entities) if (set.has(e.entity_id)) e.selected = selected;
+    summary();
+    $("status").classList.add("ok");
+  } catch (err) {
+    setStatus("Uložení selhalo: " + err.message, "err");
+  }
+  render();
+}
+
+async function load() {
+  try {
+    const r = await fetch("api/entities");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    entities = (await r.json()).entities;
+  } catch (err) {
+    setStatus("Načtení selhalo: " + err.message, "err");
+    return;
+  }
+  const sel = $("domain");
+  for (const d of [...new Set(entities.map(e => e.domain))].sort()) {
+    const o = document.createElement("option");
+    o.value = d; o.textContent = d;
+    sel.append(o);
+  }
+  summary();
+  render();
+}
+
+for (const id of ["q", "domain", "onlySel"]) {
+  $(id).addEventListener("input", () => { shown = PAGE; render(); });
+}
+$("selAll").addEventListener("click", () => {
+  const ids = visible().filter(e => !e.selected && !e.by_rule).map(e => e.entity_id);
+  if (ids.length) save(ids, true);
+});
+$("selNone").addEventListener("click", () => {
+  const ids = visible().filter(e => e.selected).map(e => e.entity_id);
+  if (ids.length) save(ids, false);
+});
+load();
+</script>
+</body>
+</html>

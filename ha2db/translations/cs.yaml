@@ -1,0 +1,55 @@
+configuration:
+  db_type:
+    name: Typ databáze
+  db_host:
+    name: Adresa DB serveru
+    description: IP adresa nebo jméno stroje, kde databáze běží.
+  db_port:
+    name: Port
+    description: InfluxDB 8086, MariaDB/MySQL 3306, PostgreSQL 5432, MSSQL 1433.
+  db_name:
+    name: Název databáze
+    description: U SQLite cesta k souboru, např. /share/ha2db.sqlite.
+  db_user:
+    name: Uživatel
+  db_password:
+    name: Heslo
+    description: Lze použít i odkaz na secrets.yaml, např. "!secret influx_password".
+  influx_ssl:
+    name: InfluxDB přes HTTPS
+  influx_verify_ssl:
+    name: Ověřovat certifikát InfluxDB
+    description: Vypněte, pokud server používá vlastní podepsaný certifikát.
+  influx_measurement:
+    name: Název measurementu
+    description: Podle zobrazovaného názvu entity, nebo podle entity_id.
+  influx_measurement_prefix:
+    name: Prefix measurementu
+    description: Text před názvem measurementu, např. "HA ".
+  table_name:
+    name: SQL tabulka
+  interval_seconds:
+    name: Interval zápisu (s)
+    description: 300 = každých 5 minut.
+  align_to_clock:
+    name: Zapisovat v kulatých časech
+    description: Např. při 300 s vždy v :00, :05, :10.
+  include_domains:
+    name: Zapisované domény
+    description: Všechny entity těchto domén, např. sensor.
+  include_entities:
+    name: Další entity
+    description: Jednotlivé entity, lze použít hvězdičku, např. switch.cerpadlo*.
+  exclude_entities:
+    name: Vyloučené entity
+    description: Má přednost před oběma seznamy výše.
+  numeric_only:
+    name: Jen číselné hodnoty
+  skip_unavailable:
+    name: Přeskočit nedostupné
+    description: Nezapisovat stavy unavailable a unknown.
+  retention_days:
+    name: Mazat starší než (dní)
+    description: Jen pro SQL, 0 = nemazat.
+  log_level:
+    name: Podrobnost logu
